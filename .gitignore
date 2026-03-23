@@ -1,0 +1,15 @@
+# AP Helper monorepo (root)
+
+# Next.js app
+ap-web/node_modules/
+ap-web/.next/
+ap-web/out/
+ap-web/.env*.local
+ap-web/*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

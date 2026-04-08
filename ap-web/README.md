@@ -98,6 +98,17 @@ Po změně od Julie uprav čísla v **`lib/april-plan.json`** (objekt `plan`). O
 | `app/api/analyze` | POST `{ url }` → signály |
 | `app/api/picks` | GET/POST → Apps Script |
 | `app/api/health` | Stav serveru |
+| `app/api/seatable` | GET → živá data ze SeaTable |
+| `lib/embeddings.ts` | OpenAI embeddings + cosine similarity |
+| `lib/cn-rules.ts` | CreditNinja decision tree |
+| `lib/seatable.ts` | SeaTable API client |
+
+## Dokumentace
+
+- **[Nastavení Google Sheet (sdílená obsazenost)](./docs/SETUP_GOOGLE_SHEET.md)**
+- **[Nastavení SeaTable API (volitelné)](./docs/SEATABLE_SYNC.md)**
+- **[Vercel deployment](./docs/DEPLOY_VERCEL.md)**
+- **[Release Notes v0.3.0 (EN)](./docs/RELEASE_v0.3.0.md)** ✨ NEW
 
 ## Produkce (Vercel / jiný host)
 

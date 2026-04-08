@@ -1,6 +1,8 @@
 import type { APRecord, SiteSignals, ScoredAP } from "./types";
 import aprilPlan from "./april-plan.json";
 import { EVENT_KEYWORDS, normalizeEventKey } from "./event-keywords";
+import { cosineSimilarity } from "./embeddings";
+import { detectSiteType, isMoneyPageUrl, isSupportPageUrl } from "./cn-rules";
 
 const MAIN_FANDUEL_CLIENT = "FanDuel";
 
@@ -197,37 +199,57 @@ export function scoreRecords(
         reasons.push("Sports + homepage target → aligns with SBK-style usage.");
       }
     } else {
-      // Non-main clients: light keyword match on anchor + URL path
-      const anchor = record.anchorText.toLowerCase();
-      let aHits = 0;
-      for (const t of tokenBag) {
-        if (t.length > 3 && anchor.includes(t)) aHits++;
+      // Non-main clients: semantic via embeddings if available, else light token match
+      if (record.embedding && signals?.embedding) {
+        const sim = cosineSimilarity(record.embedding, signals.embedding);
+        score += sim * 100;
+        if (sim > 0.5) reasons.push(`Semantic match (${Math.round(sim * 100)}% similarity)`);
+        if (sim < 0.3) warnings.push("Low semantic relevance — verify topic fit manually.");
+      } else {
+        // Fallback: anchor token overlap (original logic)
+        const anchor = record.anchorText.toLowerCase();
+        let aHits = 0;
+        for (const t of tokenBag) {
+          if (t.length > 3 && anchor.includes(t)) aHits++;
+        }
+        score += Math.min(40, aHits * 8);
+        if (aHits) reasons.push("Anchor text overlaps with site vocabulary (heuristic)");
       }
-      score += Math.min(40, aHits * 8);
-      if (aHits) reasons.push("Anchor text overlaps with site vocabulary");
     }
 
-    // CreditNinja: warn money page on non-loan vocabulary (very soft heuristic)
+    // CreditNinja: decision tree logic
     if (client === "CreditNinja") {
-      try {
-        const path = new URL(record.targetUrl).pathname.toLowerCase();
-        const isLikelyMoney =
-          /\/(personal-loans|bad-credit|payday|installment|cash-advance)/.test(
-            path,
-          ) || path === "/" || path === "";
-        if (isLikelyMoney && haystack.length > 0) {
-          const biz = ["business", "b2b", "startup", "enterprise"].some((w) =>
-            haystack.includes(w),
-          );
-          if (biz) {
-            warnings.push(
-              "Possible business-site mismatch: consider a /blog or support URL per CN guidelines.",
-            );
-            score -= 25;
-          }
+      const classification = signals?.siteType
+        ? { siteType: signals.siteType, acceptsLoanTopics: signals.acceptsLoanTopics ?? false }
+        : detectSiteType(signals?.tokens ?? []);
+
+      if (classification.siteType === "business") {
+        if (isMoneyPageUrl(record.targetUrl)) {
+          warnings.push("⚠️ Business site + money page: CreditNinja has no business loans — prefer /blog/ URLs.");
+          score -= 50;
+        } else if (isSupportPageUrl(record.targetUrl)) {
+          reasons.push("Support/blog URL: appropriate for business site (CN guidelines)");
+          score += 20;
         }
-      } catch {
-        /* ignore */
+      }
+
+      if (classification.siteType === "law") {
+        warnings.push("Law site detected — CN placement is case-by-case (consult Julie/Charlotte).");
+      }
+
+      if (!classification.acceptsLoanTopics && isMoneyPageUrl(record.targetUrl)) {
+        warnings.push("Site does not appear loan-focused — money page may look forced. Prefer /blog/ URLs.");
+        score -= 35;
+      }
+
+      if (classification.acceptsLoanTopics && isMoneyPageUrl(record.targetUrl)) {
+        reasons.push("Site accepts loan topics → money page OK");
+        score += 15;
+      }
+
+      if (isSupportPageUrl(record.targetUrl)) {
+        reasons.push("Support/blog URL: broader fit per CN decision tree");
+        score += 10;
       }
     }
 

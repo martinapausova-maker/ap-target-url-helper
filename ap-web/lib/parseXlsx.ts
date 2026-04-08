@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { APRecord } from "./types";
+import { getEmbedding } from "./embeddings";
 
 function normalizeHeader(h: unknown): string {
   return String(h ?? "")
@@ -21,9 +22,13 @@ function pickColumnIndex(
 }
 
 /**
- * Parse first sheet of AP workbook (SeaTable export).
+ * Parse an uploaded XLSX (ArrayBuffer) into AP records.
+ * Optionally, generate embeddings for each AP (anchor + target context).
  */
-export function parseAPWorkbook(buffer: ArrayBuffer): APRecord[] {
+export async function parseAPWorkbook(
+  buffer: ArrayBuffer,
+  generateEmbeddings = false,
+): Promise<APRecord[]> {
   const wb = XLSX.read(buffer, { type: "array" });
   const sheetName = wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
@@ -97,7 +102,29 @@ export function parseAPWorkbook(buffer: ArrayBuffer): APRecord[] {
     });
   }
 
+  if (generateEmbeddings) {
+    await Promise.all(
+      out.map(async (rec) => {
+        const text = `${rec.anchorText} ${new URL(rec.targetUrl).pathname}`;
+        rec.embedding = (await getEmbedding(text)) ?? undefined;
+      }),
+    );
+  }
+
   return out;
+}
+
+/**
+ * Inject embeddings into already-parsed records (for batching).
+ */
+export async function injectEmbeddings(records: APRecord[]): Promise<void> {
+  await Promise.all(
+    records.map(async (rec) => {
+      if (rec.embedding) return;
+      const text = `${rec.anchorText} ${new URL(rec.targetUrl).pathname}`;
+      rec.embedding = (await getEmbedding(text)) ?? undefined;
+    }),
+  );
 }
 
 export function uniqueClients(records: APRecord[]): string[] {

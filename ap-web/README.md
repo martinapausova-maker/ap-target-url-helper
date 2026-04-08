@@ -1,6 +1,13 @@
-# AP Helper (Searchtides)
+# AP Helper (Searchtides) v0.3.0
 
-Next.js app: nahraj měsíční **AP XLSX** (export z SeaTable), vyber **CLIENT** přesně jako ve sloupci v souboru, vlož **URL webu** vydavatele → dostaneš **seřazené** anchor + target URL. Po **I used this AP** se `Record ID` schová ostatním (při zapnutém Google Sheet).
+Next.js app: nahraj měsíční **AP XLSX** (export z SeaTable) **nebo** napoj **SeaTable API**, vyber **CLIENT** přesně jako ve sloupci v souboru, vlož **URL webu** vydavatele → dostaneš **seřazené** anchor + target URL s **AI sémantikou** (CreditNinja + ostatní klienti). Po **I used this AP** se `Record ID` schová ostatním (při zapnutém Google Sheet).
+
+## Co je nového v0.3.0
+
+- **AI sémantická analýza** (OpenAI embeddings `text-embedding-3-small`) pro klienty mimo hlavní FanDuel — přesnější než token matching, cena ~$0.002 za 400 AP.
+- **CreditNinja decision tree** integrovaná do skóre: detekuje business/finance/law weby, varuje při nesouladu money page, preferuje `/blog/` URL pro neutrální weby.
+- **Volitelný SeaTable API sync** (viz `docs/SEATABLE_SYNC.md`) — žádné měsíční Excel uploady, pokud chcete živá data.
+- Zlepšená transparence skórování pro všechny klienty.
 
 | Příkaz | Účel |
 |--------|------|
@@ -40,6 +47,30 @@ APPS_SCRIPT_PICKS_URL=https://script.google.com/macros/s/XXXX/exec
 5. Restart `npm run dev`
 
 Vzor proměnné: [.env.local.example](./.env.local.example)
+
+### OpenAI embeddings (volitelné, pro přesnější skórování)
+
+Pro AI sémantiku u CreditNinja a ostatních klientů (ne FanDuel main):
+
+```env
+OPENAI_API_KEY=sk-proj-...
+```
+
+Cena: ~$0.002 za 400 AP (cca $0.24 ročně při 12 měsících).
+
+### SeaTable API sync (volitelné, místo Excel uploadu)
+
+Pokud chcete automaticky tahát data ze SeaTable místo ručního uploadu:
+
+```env
+SEATABLE_BASE_URL=https://cloud.seatable.io
+SEATABLE_API_TOKEN=xxx
+SEATABLE_TABLE_NAME=AP
+```
+
+Návod: **[docs/SEATABLE_SYNC.md](./docs/SEATABLE_SYNC.md)**
+
+---
 
 ## Kontrola prostředí
 

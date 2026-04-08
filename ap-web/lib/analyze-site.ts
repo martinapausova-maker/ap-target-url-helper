@@ -1,6 +1,8 @@
 import { load } from "cheerio";
 import { EVENT_KEYWORDS } from "./event-keywords";
 import type { SiteSignals } from "./types";
+import { getEmbedding } from "./embeddings";
+import { detectSiteType } from "./cn-rules";
 
 const SPECIFIC = ["NFL", "NBA", "MLB", "NHL", "Golf", "Soccer"];
 
@@ -95,6 +97,10 @@ export async function analyzeSiteUrl(urlRaw: string): Promise<SiteSignals> {
       if (ok) specificCount++;
     }
 
+    const classification = detectSiteType(tokens);
+    const embeddingText = combined.slice(0, 3000);
+    const embedding = await getEmbedding(embeddingText);
+
     return {
       url: url.toString(),
       ok: true,
@@ -102,6 +108,9 @@ export async function analyzeSiteUrl(urlRaw: string): Promise<SiteSignals> {
       detectedEvents: uniq(detected),
       hasSpecificSportSignals: specificCount >= 2,
       excerpt: combined.slice(0, 400).replace(/\s+/g, " ").trim(),
+      embedding: embedding ?? undefined,
+      siteType: classification.siteType,
+      acceptsLoanTopics: classification.acceptsLoanTopics,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Fetch failed";

@@ -70,7 +70,7 @@ export default function HomePage() {
     setBusy(true);
     try {
       const buf = await file.arrayBuffer();
-      const parsed = parseAPWorkbook(buf);
+      const parsed = await parseAPWorkbook(buf, true);
       const bundle = { uploadedAt: new Date().toISOString(), records: parsed };
       saveBundle(bundle);
       setRecords(parsed);

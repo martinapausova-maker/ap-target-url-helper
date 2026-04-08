@@ -10,20 +10,20 @@ export type APRecord = {
   targetUrl: string;
   apIdLabel: string;
   notes: string;
+  embedding?: number[];
 };
 
 export type SiteSignals = {
   url: string;
   ok: boolean;
   error?: string;
-  /** Normalized tokens from nav + visible text (lowercase) */
   tokens: string[];
-  /** Sports / topics inferred from keywords */
   detectedEvents: string[];
-  /** Heuristic: site has clear multi-sport or specific sport sections */
   hasSpecificSportSignals: boolean;
-  /** Short excerpt for debugging / transparency */
   excerpt?: string;
+  embedding?: number[];
+  siteType?: "business" | "finance" | "news" | "law" | "generic";
+  acceptsLoanTopics?: boolean;
 };
 
 export type ScoredAP = {

@@ -1,49 +1,35 @@
-# SeaTable Integration Guide
+# SeaTable sync (Cloud API)
 
-## Overview
+## Jak to funguje (v0.3.1+)
 
-Starting with v0.3.0, the app can optionally fetch AP records directly from **SeaTable** instead of manually uploading an Excel file each month. This is useful for keeping the app in sync with your SeaTable base without exporting `.xlsx` files.
+1. Aplikace zavolá **SeaTable Cloud**:
+   - `POST {SEATABLE_BASE_URL}/api/v2.1/dtable/app-access-token/` s hlavičkou `Authorization: Bearer {SEATABLE_API_TOKEN}` → vrátí **Base-Token** a **dtable_uuid**.
+   - `POST {SEATABLE_BASE_URL}/api-gateway/api/v2/dtables/{dtable_uuid}/rows/` s tělem obsahujícím `table_name`, volitelně **`view_name`**, `convert_keys: true`, stránkování (`start`, `limit`).
 
-## Setup (Optional)
+2. Pokud je nastavené **`SEATABLE_VIEW_NAME`**, vrátí se jen řádky z toho view (např. jen volné AP).
 
-1. **Get your SeaTable Base URL and API Token**  
-   - In SeaTable, navigate to your base → **Advanced** → **API Token** (or use your account-level token).
-   - Your base URL will look like: `https://cloud.seatable.io` (or your self-hosted URL).
+3. V UI použij **Sync from SeaTable** — data se uloží do `localStorage` stejně jako po nahrání XLSX.
 
-2. **Configure environment variables**  
-   Add these to `ap-web/.env.local`:
+## Proměnné prostředí
 
-   ```bash
-   SEATABLE_BASE_URL=https://cloud.seatable.io
-   SEATABLE_API_TOKEN=your-base-api-token
-   SEATABLE_TABLE_NAME=AP
-   ```
+| Proměnná | Povinné | Příklad |
+|----------|---------|---------|
+| `SEATABLE_BASE_URL` | ano | `https://cloud.seatable.io` (bez lomítka na konci) |
+| `SEATABLE_API_TOKEN` | ano | API token k base (SeaTable → base → **Advanced** → **API Token**) |
+| `SEATABLE_TABLE_NAME` | ne | výchozí `AP` |
+| `SEATABLE_VIEW_NAME` | ne | přesný název view v UI (doporučeno pro „jen volné AP“) |
 
-3. **Test the integration**  
-   Start the dev server:
-   ```bash
-   npm run dev
-   ```
+Na Vercelu: **Project → Settings → Environment Variables** → Production (+ Preview podle potřeby) → **Redeploy**.
 
-   Then visit:
-   ```
-   http://localhost:3000/api/seatable
-   ```
+## Ověření
 
-   You should see JSON with your AP records (if the credentials are correct).
+- `GET /api/health` — sekce `seatable` (configured / view).
+- `GET /api/seatable` — JSON `{ ok, count, records, skipped }`.
 
-## Using SeaTable Sync in the UI
+## Sloupce
 
-(Future enhancement) — The UI will include a **"Sync from SeaTable"** button alongside the Excel upload. This will:
+Mapování je v `app/api/seatable/route.ts` (názvy sloupců jako v SeaTable při `convert_keys: true`). Případně uprav podle vaší base.
 
-1. Fetch records from `/api/seatable` (via the API token you configured).
-2. Optionally generate embeddings for each record (if `OPENAI_API_KEY` is set).
-3. Store them in `localStorage` just like the uploaded Excel.
+## Google Sheet
 
-For now, you can still upload an Excel file as before. SeaTable sync is **optional** for the MVP pilot.
-
-## Notes
-
-- **Permissions**: The API token must have read access to the AP table.
-- **Column names**: The code expects columns named: `Client`, `Month`, `AP Status`, `Event`, `Category`, `Priority`, `Anchor Text`, `Target URL`, `AP ID`, `Notes`. If your columns differ, adjust the mapping in `app/api/seatable/route.ts`.
-- **Security**: Keep your `.env.local` file **out of Git**. It is already in `.gitignore`.
+Není nutný, pokud obsazenost řešíte změnou statusu v SeaTable a view už obsazené neukazuje.

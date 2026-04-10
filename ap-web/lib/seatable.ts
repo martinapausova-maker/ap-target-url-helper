@@ -1,66 +1,200 @@
 /**
- * SeaTable API client (Base API Token approach).
- * Docs: https://docs.seatable.io/
+ * SeaTable Cloud API (API Gateway v2).
+ * Flow: API-Token → POST app-access-token → Base-Token + dtable_uuid → POST list rows.
+ * @see https://api.seatable.com/reference/authentication
+ * @see https://api.seatable.com/reference/listrows
  */
 
 type SeaTableRow = Record<string, unknown>;
 
-interface SeaTableConfig {
-  baseUrl: string;
-  token: string;
-  tableName: string;
+function normalizeServerUrl(raw: string): string {
+  return raw.trim().replace(/\/+$/, "");
 }
 
-function getConfig(): SeaTableConfig | null {
-  const baseUrl = process.env.SEATABLE_BASE_URL?.trim();
-  const token = process.env.SEATABLE_API_TOKEN?.trim();
-  const tableName = process.env.SEATABLE_TABLE_NAME?.trim() || "AP";
-
-  if (!baseUrl || !token) return null;
-  return { baseUrl, token, tableName };
+export function isSeaTableEnvConfigured(): boolean {
+  return Boolean(
+    process.env.SEATABLE_API_TOKEN?.trim() && process.env.SEATABLE_BASE_URL?.trim(),
+  );
 }
 
-export async function fetchAPRows(): Promise<SeaTableRow[]> {
-  const cfg = getConfig();
-  if (!cfg) {
+function getTableName(): string {
+  return process.env.SEATABLE_TABLE_NAME?.trim() || "AP";
+}
+
+function getViewName(): string | undefined {
+  const v = process.env.SEATABLE_VIEW_NAME?.trim();
+  return v || undefined;
+}
+
+type AccessPayload = {
+  access_token: string;
+  dtable_uuid: string;
+};
+
+async function postAppAccessToken(
+  serverUrl: string,
+  apiToken: string,
+): Promise<AccessPayload> {
+  const url = `${serverUrl}/api/v2.1/dtable/app-access-token/`;
+  const tryAuth = (scheme: "Bearer" | "Token") =>
+    fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `${scheme} ${apiToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ exp: "3d" }),
+    });
+
+  let res = await tryAuth("Bearer");
+  if (res.status === 401 || res.status === 403) {
+    res = await tryAuth("Token");
+  }
+
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    const detail =
+      typeof data === "object" && data !== null
+        ? JSON.stringify(data)
+        : await res.text().catch(() => "");
     throw new Error(
-      "SeaTable not configured. Set SEATABLE_BASE_URL, SEATABLE_API_TOKEN in .env.local",
+      `SeaTable app-access-token failed (${res.status}): ${detail || res.statusText}. Check SEATABLE_API_TOKEN and SEATABLE_BASE_URL.`,
     );
   }
 
-  const url = `${cfg.baseUrl}/dtable-server/api/v1/dtables/${encodeURIComponent(cfg.tableName)}/rows/`;
+  const access_token = data.access_token;
+  const dtable_uuid = data.dtable_uuid;
+  if (typeof access_token !== "string" || typeof dtable_uuid !== "string") {
+    throw new Error(
+      "SeaTable app-access-token: response missing access_token or dtable_uuid.",
+    );
+  }
+  return { access_token, dtable_uuid };
+}
+
+async function listRowsPage(
+  serverUrl: string,
+  accessToken: string,
+  dtableUuid: string,
+  tableName: string,
+  viewName: string | undefined,
+  start: number,
+): Promise<SeaTableRow[]> {
+  const url = `${serverUrl}/api-gateway/api/v2/dtables/${encodeURIComponent(dtableUuid)}/rows/`;
+  const body: Record<string, unknown> = {
+    table_name: tableName,
+    start,
+    limit: 1000,
+    convert_keys: true,
+  };
+  if (viewName) body.view_name = viewName;
+
   const res = await fetch(url, {
+    method: "POST",
     headers: {
-      Authorization: `Token ${cfg.token}`,
+      Authorization: `Bearer ${accessToken}`,
       Accept: "application/json",
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify(body),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as {
+    rows?: SeaTableRow[];
+    results?: SeaTableRow[];
+    error_message?: string;
+  };
+
+  if (!res.ok) {
+    const msg =
+      data.error_message ||
+      (typeof data === "object" ? JSON.stringify(data) : "") ||
+      res.statusText;
+    throw new Error(`SeaTable list rows failed (${res.status}): ${msg}`);
+  }
+
+  if (Array.isArray(data.rows)) return data.rows;
+  if (Array.isArray(data.results)) return data.results;
+  return [];
+}
+
+/**
+ * Fetch all rows from the table (optionally scoped to a view), with pagination.
+ */
+export async function fetchAPRows(): Promise<SeaTableRow[]> {
+  const apiToken = process.env.SEATABLE_API_TOKEN?.trim();
+  const serverUrlRaw = process.env.SEATABLE_BASE_URL?.trim();
+  if (!apiToken || !serverUrlRaw) {
+    throw new Error(
+      "SeaTable not configured. Set SEATABLE_BASE_URL and SEATABLE_API_TOKEN.",
+    );
+  }
+
+  const serverUrl = normalizeServerUrl(serverUrlRaw);
+  const tableName = getTableName();
+  const viewName = getViewName();
+
+  const { access_token, dtable_uuid } = await postAppAccessToken(
+    serverUrl,
+    apiToken,
+  );
+
+  const all: SeaTableRow[] = [];
+  let start = 0;
+  for (;;) {
+    const page = await listRowsPage(
+      serverUrl,
+      access_token,
+      dtable_uuid,
+      tableName,
+      viewName,
+      start,
+    );
+    all.push(...page);
+    if (page.length < 1000) break;
+    start += 1000;
+  }
+  return all;
+}
+
+/**
+ * Update row(s) via API Gateway v2. `updates` should use SeaTable column names.
+ */
+export async function updateRowStatus(
+  rowId: string,
+  columnUpdates: Record<string, unknown>,
+): Promise<void> {
+  const apiToken = process.env.SEATABLE_API_TOKEN?.trim();
+  const serverUrlRaw = process.env.SEATABLE_BASE_URL?.trim();
+  if (!apiToken || !serverUrlRaw || !rowId) return;
+
+  const serverUrl = normalizeServerUrl(serverUrlRaw);
+  const tableName = getTableName();
+  const { access_token, dtable_uuid } = await postAppAccessToken(
+    serverUrl,
+    apiToken,
+  );
+
+  const url = `${serverUrl}/api-gateway/api/v2/dtables/${encodeURIComponent(dtable_uuid)}/rows/`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+       body: JSON.stringify({
+      table_name: tableName,
+      updates: [{ row_id: rowId, row: columnUpdates }],
+    }),
   });
 
   if (!res.ok) {
-    throw new Error(`SeaTable fetch failed: ${res.status} ${res.statusText}`);
+    const data = (await res.json().catch(() => ({}))) as { error_message?: string };
+    throw new Error(
+      data.error_message ||
+        `SeaTable update row failed: ${res.status} ${res.statusText}`,
+    );
   }
-
-  const data = (await res.json()) as { rows?: SeaTableRow[] };
-  return data.rows ?? [];
-}
-
-export async function updateRowStatus(
-  rowId: string,
-  updates: Record<string, unknown>,
-): Promise<void> {
-  const cfg = getConfig();
-  if (!cfg) return;
-
-  const url = `${cfg.baseUrl}/dtable-server/api/v1/dtables/${encodeURIComponent(cfg.tableName)}/rows/`;
-  await fetch(url, {
-    method: "PUT",
-    headers: {
-      Authorization: `Token ${cfg.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      row_id: rowId,
-      row: updates,
-    }),
-  });
 }

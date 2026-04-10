@@ -17,6 +17,8 @@ import { PlacementChecklist } from "@/components/PlacementChecklist";
 type HealthPayload = {
   version?: string;
   picks?: { configured?: boolean; hint?: string };
+  seatable?: { configured?: boolean; view?: boolean; hint?: string };
+  runtime?: { vercel?: boolean; hint?: string };
   node?: string;
 };
 
@@ -81,6 +83,48 @@ export default function HomePage() {
       setSignals(null);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to parse file");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onSyncSeaTable = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/seatable", { cache: "no-store" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        records?: APRecord[];
+        count?: number;
+        skipped?: number;
+      };
+      if (!data.ok) {
+        alert(data.error ?? "SeaTable request failed");
+        return;
+      }
+      const parsed = Array.isArray(data.records) ? data.records : [];
+      if (!parsed.length) {
+        alert(
+          "SeaTable returned 0 usable rows (need Anchor Text + Target URL). Check table name, view name, and token.",
+        );
+        return;
+      }
+      const bundle = { uploadedAt: new Date().toISOString(), records: parsed };
+      saveBundle(bundle);
+      setRecords(parsed);
+      setUploadedAt(bundle.uploadedAt);
+      setClients(uniqueClients(parsed));
+      setClient("");
+      setResults([]);
+      setSignals(null);
+      if (data.skipped && data.skipped > 0) {
+        alert(
+          `Loaded ${parsed.length} rows from SeaTable (${data.skipped} skipped without anchor/URL).`,
+        );
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "SeaTable sync failed");
     } finally {
       setBusy(false);
     }
@@ -170,16 +214,22 @@ export default function HomePage() {
           AP Helper
         </h1>
         <p className="mt-2 text-slate-400">
-          Upload monthly AP export (XLSX), choose the exact{" "}
-          <span className="text-slate-200">CLIENT</span> value, paste the
-          publisher URL, get ranked options. Picks sync to Google Sheet when{" "}
-          <code className="rounded bg-slate-800 px-1">APPS_SCRIPT_PICKS_URL</code>{" "}
-          is set; otherwise they stay in this browser only.
+          Load APs from an <span className="text-slate-200">XLSX</span> export or{" "}
+          <span className="text-slate-200">SeaTable</span> (view with free APs).
+          Choose the exact <span className="text-slate-200">CLIENT</span>, paste
+          the publisher URL, get ranked options. Optional: Google Sheet picks via{" "}
+          <code className="rounded bg-slate-800 px-1">APPS_SCRIPT_PICKS_URL</code>
+          ; if you only use SeaTable status + views, you can skip it.
         </p>
         {health?.version && (
           <p className="mt-3 text-xs text-slate-500">
             App v{health.version}
-            {health.node ? ` · ${health.node}` : ""} ·{" "}
+            {health.node ? ` · ${health.node}` : ""}
+            {health.seatable?.configured ? " · SeaTable env OK" : ""}
+            {health.seatable?.configured && health.seatable?.view
+              ? " · view filter on"
+              : ""}{" "}
+            ·{" "}
             <a
               className="text-indigo-400 hover:underline"
               href="/api/health"
@@ -195,8 +245,12 @@ export default function HomePage() {
       <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl backdrop-blur">
         <h2 className="text-lg font-medium text-white">1. Monthly file</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Use the same export you put in SeaTable (e.g. Apr 2026). Data stays in
-          your browser until you replace it.
+          XLSX = stejný export jako dřív. Nebo{" "}
+          <strong className="text-slate-300">Sync from SeaTable</strong> — na
+          serveru musí být nastavené{" "}
+          <code className="rounded bg-slate-800 px-1">SEATABLE_*</code> (viz{" "}
+          <code className="rounded bg-slate-800 px-1">/api/health</code>). Data
+          zůstávají v prohlížeči, dokud je nepřepíšeš.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
@@ -209,6 +263,14 @@ export default function HomePage() {
               onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void onSyncSeaTable()}
+            className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-700 disabled:opacity-40"
+          >
+            Sync from SeaTable
+          </button>
           {uploadedAt && (
             <span className="text-sm text-slate-400">
               Loaded {records.length} rows ·{" "}
@@ -290,7 +352,8 @@ export default function HomePage() {
           <div className="text-sm text-slate-400">
             {sheetConfigured === false && (
               <span className="text-amber-300">
-                Sheet URL not configured — local browser only.{" "}
+                Sheet URL not configured — pick-hiding is local browser only (or
+                use SeaTable view + reload data).{" "}
               </span>
             )}
             {sheetConfigured === true && (

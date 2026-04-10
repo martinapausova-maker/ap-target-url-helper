@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { APP_VERSION } from "@/lib/version";
+import { isSeaTableEnvConfigured } from "@/lib/seatable";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,9 @@ export const runtime = "nodejs";
 export async function GET() {
   const picksUrl = Boolean(process.env.APPS_SCRIPT_PICKS_URL?.trim());
   const onVercel = Boolean(process.env.VERCEL);
+  const seatable = isSeaTableEnvConfigured();
+  const viewSet = Boolean(process.env.SEATABLE_VIEW_NAME?.trim());
+
   return NextResponse.json({
     ok: true,
     app: "ap-helper",
@@ -16,14 +20,23 @@ export async function GET() {
     runtime: {
       vercel: onVercel,
       hint: onVercel
-        ? "Running on Vercel — set APPS_SCRIPT_PICKS_URL in Project → Environment Variables if picks.configured is false"
+        ? "Running on Vercel — check env vars in Project → Settings → Environment Variables"
         : "Local / non-Vercel",
+    },
+    seatable: {
+      configured: seatable,
+      view: viewSet,
+      hint: seatable
+        ? viewSet
+          ? "SEATABLE_* set; list rows use SEATABLE_VIEW_NAME if provided"
+          : "SEATABLE_* set; no SEATABLE_VIEW_NAME — all rows in table (no view filter)"
+        : "Set SEATABLE_BASE_URL + SEATABLE_API_TOKEN (+ optional SEATABLE_VIEW_NAME)",
     },
     picks: {
       configured: picksUrl,
       hint: picksUrl
-        ? "APPS_SCRIPT_PICKS_URL is set"
-        : "Set APPS_SCRIPT_PICKS_URL in .env.local for shared picks (see docs/SETUP_GOOGLE_SHEET.md)",
+        ? "APPS_SCRIPT_PICKS_URL is set (Google Sheet picks)"
+        : "APPS_SCRIPT_PICKS_URL not set — optional if you use SeaTable-only workflow",
     },
     node: process.version,
   });

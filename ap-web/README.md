@@ -1,6 +1,8 @@
-# AP Helper (Searchtides) v0.3.0
+# AP Helper (Searchtides) v0.3.1
 
-Next.js app: nahraj měsíční **AP XLSX** (export z SeaTable) **nebo** napoj **SeaTable API**, vyber **CLIENT** přesně jako ve sloupci v souboru, vlož **URL webu** vydavatele → dostaneš **seřazené** anchor + target URL s **AI sémantikou** (CreditNinja + ostatní klienti). Po **I used this AP** se `Record ID` schová ostatním (při zapnutém Google Sheet).
+Next.js app: nahraj měsíční **AP XLSX** (export z SeaTable) **nebo** **Sync from SeaTable**, vyber **CLIENT** přesně jako ve sloupci v souboru, vlož **URL webu** vydavatele → dostaneš **seřazené** anchor + target URL s **AI sémantikou** (CreditNinja + ostatní klienti). Po **I used this AP** se `Record ID` schová ostatním (při zapnutém Google Sheet).
+
+**Kdo co dělá (Vercel, env, klikání):** [docs/CO_DELAS_TY.md](./docs/CO_DELAS_TY.md)
 
 ## Co je nového v0.3.0
 
@@ -20,7 +22,7 @@ Next.js app: nahraj měsíční **AP XLSX** (export z SeaTable) **nebo** napoj *
 
 1. `cd ap-web` → `npm install` → `npm run dev`
 2. Otevři **http://localhost:3000**
-3. **Upload XLSX** (stejný export jako do SeaTable)
+3. **Upload XLSX** nebo **Sync from SeaTable** (na serveru musí být `SEATABLE_*`)
 4. Vyber **CLIENT**, vlož URL webu → **Get recommendations**
 5. **Copy details** nebo **I used this AP** (po použití zadej i do SeaTable jako dnes)
 
@@ -66,6 +68,7 @@ Pokud chcete automaticky tahát data ze SeaTable místo ručního uploadu:
 SEATABLE_BASE_URL=https://cloud.seatable.io
 SEATABLE_API_TOKEN=xxx
 SEATABLE_TABLE_NAME=AP
+SEATABLE_VIEW_NAME=Přesný název view
 ```
 
 Návod: **[docs/SEATABLE_SYNC.md](./docs/SEATABLE_SYNC.md)**

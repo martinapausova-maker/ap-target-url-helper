@@ -42,4 +42,7 @@ if (fs.existsSync(envPath)) {
 }
 
 console.log("\nNext: npm run dev  →  http://localhost:3000");
-console.log("Docs: ap-web/docs/SETUP_GOOGLE_SHEET.md\n");
+console.log("Docs: ap-web/docs/SETUP_GOOGLE_SHEET.md");
+console.log(
+  "Vercel: Root Directory musí být ap-web (viz VERCEL_PO_PRENOSU.md v kořeni repa).\n",
+);

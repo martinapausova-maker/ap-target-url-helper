@@ -26,6 +26,10 @@ Po pushi na GitHub běží workflow **CI** (`.github/workflows/ci.yml`): `npm ci
 
 ## Vercel
 
+**Rychlý import s nastaveným `ap-web`:**  
+[Otevřít Vercel „New“ s `root-directory=ap-web`](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMartinaSearchTides%2Fap-target-url-helper&root-directory=ap-web)  
+*(URL repa uprav, pokud používáš fork pod jiným účtem.)*
+
 1. [vercel.com](https://vercel.com) → **Add New Project** → Import z GitHubu (vyber repo).
 2. **Root Directory:** nastav na **`ap-web`** (ne celý monorepo kořen, pokud repo obsahuje i PDF/DOCX vedle `ap-web`).
 3. Framework: Next.js (detekuje se sám).

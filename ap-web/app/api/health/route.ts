@@ -8,10 +8,17 @@ export const runtime = "nodejs";
  */
 export async function GET() {
   const picksUrl = Boolean(process.env.APPS_SCRIPT_PICKS_URL?.trim());
+  const onVercel = Boolean(process.env.VERCEL);
   return NextResponse.json({
     ok: true,
     app: "ap-helper",
     version: APP_VERSION,
+    runtime: {
+      vercel: onVercel,
+      hint: onVercel
+        ? "Running on Vercel — set APPS_SCRIPT_PICKS_URL in Project → Environment Variables if picks.configured is false"
+        : "Local / non-Vercel",
+    },
     picks: {
       configured: picksUrl,
       hint: picksUrl

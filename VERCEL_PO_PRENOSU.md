@@ -2,6 +2,21 @@
 
 Repo je **monorepo**: Next.js aplikace je jen ve složce **`ap-web/`**. Bez tohoto nastavení import na Vercelu typicky „nefunguje“.
 
+## Oprava stávajícího projektu (bez mazání)
+
+1. [Vercel](https://vercel.com) → otevři projekt **ap-target-url-helper** → **Settings → General → Root Directory** → **`ap-web`** → Save.  
+2. **Settings → Environment Variables** → znovu přidej **`APPS_SCRIPT_PICKS_URL`** (a případně ostatní).  
+3. **Settings → Git** → ověř repo **MartinaSearchTides/ap-target-url-helper** a větev **main**.  
+4. **Deployments** → u posledního deploye **Redeploy**.
+
+## Nový import z GitHubu (s přednastaveným `ap-web`)
+
+Při zakládání projektu přes Vercel můžeš použít odkaz s parametrem **`root-directory=ap-web`** (ekvivalent nastavení v dashboardu):
+
+**[Deploy na Vercel s Root Directory = ap-web](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMartinaSearchTides%2Fap-target-url-helper&root-directory=ap-web)**
+
+Po importu stejně zkontroluj **Environment Variables** (nepřenesou se z jiného účtu).
+
 ## Kontrolní seznam (5 minut)
 
 | Krok | Kde | Co nastavit |

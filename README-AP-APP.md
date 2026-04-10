@@ -26,6 +26,8 @@ npm run dev       # http://localhost:3000
 | Soubor | Obsah |
 |--------|--------|
 | `ap-web/README.md` | Hlavní návod (CS), struktura, produkce |
+| **`VERCEL_PO_PRENOSU.md`** | Po přesunu na jiný GitHub/Vercel: Root Directory **`ap-web`** + env |
+| `ap-web/docs/DEPLOY_VERCEL.md` | Nasazení na Vercel (včetně migrace) |
 | `ap-web/docs/SETUP_GOOGLE_SHEET.md` | Krok za krokem: Sheet + Apps Script + `.env.local` |
 | `ap-web/docs/google-apps-script.gs` | Kód ke vložení do Google Apps Script |
 

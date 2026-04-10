@@ -37,6 +37,21 @@ Po pushi na GitHub běží workflow **CI** (`.github/workflows/ci.yml`): `npm ci
 
 Po deployi otevři URL z Vercelu → mělo by být **Sheet sync enabled** (nebo ověř `https://tvuj-projekt.vercel.app/api/health` → `"configured": true`).
 
+## Přesun na jiný GitHub / jiný Vercel účet („přestalo to fungovat“)
+
+Nejčastější důvody po **Import** projektu znovu:
+
+1. **Root Directory** — u tohoto repa musí být **`ap-web`**. V kořeni monorepa **není** `package.json` s Next.js; když zůstane root `.`, build na Vercelu selže nebo se nenasadí správná aplikace.  
+   **Vercel → Project → Settings → General → Root Directory** → `ap-web` → Save → **Redeploy**.
+
+2. **Environment Variables** se po importu **nepřenášejí** — ve starém projektu je musíš znovu zadat v novém:  
+   `APPS_SCRIPT_PICKS_URL` (povinné pro sdílené picks), volitelně `OPENAI_API_KEY`, `SEATABLE_*`.  
+   Ověření: `https://…vercel.app/api/health` → `picks.configured` musí být `true`, pokud chcete Sheet sync.
+
+3. **Git propojení** — pokud v Overview vidíš **„Connect Git“** / checklist bez napojeného repozitáře, produkce nemusí běžet z `MartinaSearchTides/ap-target-url-helper`.   **Settings → Git** → připoj správné repo a větev `main`, pak redeploy.
+
+4. Po změně Root Directory nebo env vždy **Redeploy** (Deployments → … → Redeploy).
+
 ## Funguje to „tak jako tak“?
 
 - **Ano**, pokud na Vercelu **nastavíš** `APPS_SCRIPT_PICKS_URL`. Bez ní picks poběží jen v localStorage v prohlížeči (jako lokálně bez `.env.local`).

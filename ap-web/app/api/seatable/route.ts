@@ -45,6 +45,9 @@ function rowToAPRecord(row: Record<string, unknown>): APRecord {
  * GET /api/seatable — fetch AP records from SeaTable (optionally filtered by view via env).
  */
 export async function GET() {
+  // #region agent log
+  console.log("[SEATABLE-N] GET /api/seatable called", { ts: Date.now(), vercel: process.env.VERCEL });
+  // #endregion
   try {
     const rows = await fetchAPRows();
     const records: APRecord[] = rows.map((r) =>

@@ -21,6 +21,9 @@ async function scriptGetList(url: string): Promise<string[]> {
 }
 
 export async function GET() {
+  // #region agent log
+  console.log("[PICKS-N] GET /api/picks called", { ts: Date.now(), vercel: process.env.VERCEL });
+  // #endregion
   const base = process.env.APPS_SCRIPT_PICKS_URL;
   if (!base) {
     return NextResponse.json({ recordIds: [], configured: false });

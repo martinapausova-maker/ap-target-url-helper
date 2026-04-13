@@ -12,6 +12,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // #region agent log
+  console.log("[LAYOUT-N] RootLayout rendered (server)", { ts: Date.now(), vercel: process.env.VERCEL });
+  // #endregion
   return (
     <html lang="en">
       <body className="min-h-screen">{children}</body>

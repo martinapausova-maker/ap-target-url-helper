@@ -23,6 +23,12 @@ type HealthPayload = {
 };
 
 export default function HomePage() {
+  // #region agent log
+  if (typeof window !== "undefined" && !window.__HOMEPAGE_LOG_SENT) {
+    window.__HOMEPAGE_LOG_SENT = true;
+    console.log("[PAGE-N] HomePage client component mounted", { ts: Date.now(), ua: navigator.userAgent });
+  }
+  // #endregion
   const [records, setRecords] = useState<APRecord[]>([]);
   const [uploadedAt, setUploadedAt] = useState<string | null>(null);
   const [clients, setClients] = useState<string[]>([]);

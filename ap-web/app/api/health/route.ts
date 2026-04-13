@@ -8,6 +8,9 @@ export const runtime = "nodejs";
  * Quick status for admins / debugging. Safe to expose (no secrets).
  */
 export async function GET() {
+  // #region agent log
+  console.log("[HEALTH-N] GET /api/health called", { ts: Date.now(), vercel: process.env.VERCEL, node: process.version });
+  // #endregion
   const picksUrl = Boolean(process.env.APPS_SCRIPT_PICKS_URL?.trim());
   const onVercel = Boolean(process.env.VERCEL);
   const seatable = isSeaTableEnvConfigured();
